@@ -22,10 +22,13 @@ gpr = gp.models.GPRegression(x, y, kernel, noise=torch.tensor(1e-4))
 
 
 # 1. Use NUTS to sample from the posterior p(theta | D) for the GP parameters
-S = 100 # TODO 500
-C = 2
+#
+# Params set after analysis:
+S = 500
+C = 4
+W = 1000
 nuts_kernel = pyro.infer.NUTS(gpr.model) # jit_compile=True emits warnings
-mcmc=pyro.infer.MCMC(nuts_kernel, num_samples=S, num_chains=C, warmup_steps=100)
+mcmc=pyro.infer.MCMC(nuts_kernel, num_samples=S, num_chains=C, warmup_steps=W)
 mcmc.run()
 posterior_samples = mcmc.get_samples()
 
@@ -35,7 +38,7 @@ posterior_samples = mcmc.get_samples()
 # data = arviz.from_pyro(mcmc)
 # summary = arviz.summary(data, hdi_prob=0.95)
 # print(summary)
-# TODO
+# TODO Ran this in Google Colab, since there is an issue in my local environment.
 
 # 3. Use the obtained MCMC samples from the posterior to obtain estimates of
 # mean m(x∗) and variance v(x∗) of p(y∗|x∗,D) at a point x∗ ∈ [−1, 1].
@@ -43,17 +46,16 @@ posterior_samples = mcmc.get_samples()
 # The predictive distribution given by marginalising out hyperparameters theta:
 #   p(y*|x*,D) = int p(y*|x*,D,theta)p(theta|D) dtheta
 # is intractable. So we use a Monte Carlo estimate.
-xstar = torch.linspace(-1,1,101)
+xstar = torch.linspace(-1,1,200)
 
-# Compute mean and variance of f*|y.
 def conditional(xstar, lengthscale, variance):
+  # Compute mean and variance of f*|y.
   with torch.no_grad():
-    # Local GP object
-    lgp = gp.models.GPRegression(x, y, kernel, noise=torch.tensor(1e-4))
-    lgp.kernel.variance = variance
-    lgp.kernel.lengthscale = lengthscale
+    gpr = gp.models.GPRegression(x, y, kernel, noise=torch.tensor(1e-4))
+    gpr.kernel.variance = variance
+    gpr.kernel.lengthscale = lengthscale
 
-    mean, var = lgp(xstar, full_cov=False, noiseless=False)
+    mean, var = gpr(xstar, full_cov=False, noiseless=False)
   return mean, var
 
 # Monte Carlo estimate of m(x*) and v(x*).
@@ -74,24 +76,3 @@ v = vars.mean(0)
 # even a difference? its a simple mean both ways)
 
 gp_plot(f, x, y, xstar, m, v)
-
-
-#
-# See plotting code from GP tutorial on how to use the model
-# (we get mean, cov; plot mean and use cov to get std to show uncertainty).
-# But unsure how to use model when integrating over sampled params.
-#
-# posterior predictive follow tricks on GLM slides week 1, ends at slide 34--35
-S = x
-f_S = y
-# by pp 45: p(y|f_S) = N(y;f_S,I) since y is noise-free?
-# Not even sure, since this follows from y = g(x) + e with e = N(0,I).
-# And our y (so far) is y = g(x) meaning f* and y* are interchangable.
-#
-# Look at https://num.pyro.ai/en/0.7.1/examples/gp.html
-# and refer to Script pp. 47, how are the many samples of the posterior
-# handled? Are they actually integrated out?
-# Not sure if the hint in B.1 excludes running p(f*|x*,D) for each
-# parameter and then averaging _afterwards_?
-# Also try to make sense of how the link to the slides fits into
-# this context---there, theta is actually marginalized.
