@@ -10,14 +10,14 @@ def gp_plot(f, x, y, xstar, mean, var, filename="gp_plot.pdf", xnew=None, ynew=N
 
   # Visualize p(f*|x*,D).
   sd = var.sqrt()  # standard deviation at each input point x
-  ax.plot(xstar.numpy(), mean.numpy(), "m", lw=3, ls="--", label="$m(x*)$")
+  ax.plot(xstar.numpy(), mean.numpy(), "m", lw=3, ls="--", label="$m(x^*)$")
   ax.fill_between(
       xstar.numpy(),  # plot the two-sigma uncertainty about the mean
       (mean - 2.0 * sd).numpy(),
       (mean + 2.0 * sd).numpy(),
       color="C0",
       alpha=0.3,
-      label="$m(x*) \pm 2\sqrt{v(x*)}$",
+      label="$m(x^*) \pm 2\sqrt{v(x^*)}$",
   )
 
   # Plot f(x*).
@@ -33,5 +33,18 @@ def gp_plot(f, x, y, xstar, mean, var, filename="gp_plot.pdf", xnew=None, ynew=N
   plt.ylabel("y")
 
   plt.legend()
+  plt.tight_layout()
+  plt.savefig(filename)
+
+def posterior_plot(lengthscale, variance, filename="posterior_plot.pdf"):
+  fig, ax = plt.subplots(figsize=(8, 8))
+
+  # Scatter plot.
+  ax.plot(lengthscale.numpy(), variance.numpy(), "kx", markersize=15, lw=4, alpha=0.65)
+
+  plt.loglog()
+
+  plt.xlabel("lengthscale")
+  plt.ylabel("variance")
   plt.tight_layout()
   plt.savefig(filename)

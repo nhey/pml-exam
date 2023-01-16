@@ -5,6 +5,7 @@ import pyro.distributions as dist
 import arviz
 
 from util import gp_plot
+from util import posterior_plot
 
 def f(x):
   assert (x >= -1).all() and (x <= 1).all(), f"f({x}) is not in domain of f"
@@ -76,3 +77,9 @@ v = vars.mean(0)
 # even a difference? its a simple mean both ways)
 
 gp_plot(f, x, y, xstar, m, v)
+
+# p(\theta|D) using 500 samples
+posterior_plot(
+  posterior_samples["kernel.lengthscale"][:500],
+  posterior_samples["kernel.variance"][:500],
+)
