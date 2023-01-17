@@ -16,7 +16,6 @@ y = f(x)
 
 xstar = torch.linspace(-1,1,200).detach()
 
-# TODO Only one sample from MCMC good enough quality?
 def sample_posterior(model, S=1, C=1, W=1000):
   nuts_kernel = pyro.infer.NUTS(model)
   mcmc=pyro.infer.MCMC(nuts_kernel, num_samples=S, num_chains=C, warmup_steps=W)
@@ -26,17 +25,18 @@ def sample_posterior(model, S=1, C=1, W=1000):
   return {k[len("kernel."):]: v[-1] for k, v in mcmc.get_samples().items()}
 
 # Bayesian optimisation
-def bayesian_optimisation(kernel, kernel_priors, D, xstar, T, saveT=()):
-  # kernel is a function that returns the kernel when given args.
-  # kernel_priors is the kernel instantiated with priors as args.
-  # D is the initial dataset {(x_1, f(x_1)), ..., (x_n, f(x_n))}.
-  # xstar is the candidate set {x^*_1, ..., x^*_l}.
-  # T number of iterations.
+def bayesian_optimisation(kernel, kernel_priors, D, xstar, T):
+  # kernel:        A function that returns the kernel when given args.
+  # kernel_priors: Kernel instantiated with priors as args.
+  # D:             Initial dataset {(x_1, f(x_1)), ..., (x_n, f(x_n))}.
+  # xstar:         Candidate set {x^*_1, ..., x^*_l}.
+  # T:             Number of iterations.
   n = D[0].shape[0]
   # Allocate dataset arrays to hold iteration results.
   x, y = torch.empty(n+T), torch.empty(n+T)
   x[:n], y[:n] = D
   means, vars = torch.empty(T+1, len(xstar)), torch.empty(T+1, len(xstar))
+  thetas = []
   # Iteratively infer hyperparameters given D, predict best local minimum
   # candidate for evaluation and update D.
   kernel = partial(kernel, input_dim=1)
@@ -47,13 +47,13 @@ def bayesian_optimisation(kernel, kernel_priors, D, xstar, T, saveT=()):
     gpr = gp.models.GPRegression(
       x[:n+k], y[:n+k], kernel_prior, noise=torch.tensor(1e-4)
     )
-    # Save parameters for plotting at k=0 (which is k=-1 here).
+    # Save (hyper)parameters for plotting at k=0 (which is k=-1 here).
     if k == 0:
       means[k], vars[k] = gpr(xstar, full_cov=False, noiseless=False)
+      thetas.append({p[0][:-4]: p[1] for p in kernel_prior.named_pyro_params()})
     # Sample kernel hyperparameters from the posterior.
     theta = sample_posterior(gpr.model)
     gpr.kernel = kernel(**theta)
-    print(theta)
 
     # Algorithm 1
     # Sample f* ~ p(f*|X*,D).
@@ -64,9 +64,10 @@ def bayesian_optimisation(kernel, kernel_priors, D, xstar, T, saveT=()):
     # Add (x^*_p, f(x^*_p)) to the dataset D.
     x[n+k], y[n+k] = xstar[p], f(xstar[p])
 
-    # Save parameters for plotting
+    # Save (hyper)parameters for plotting
     means[k+1], vars[k+1] = mean, var
-  return torch.min(y), ((x[n:], y[n:]), means.detach(), vars.detach())
+    thetas.append(theta)
+  return torch.min(y), ((x[n:], y[n:]), means.detach(), vars.detach(), thetas)
 
 # Need to instantiate kernel with priors here since the RBF (Isotropy)
 # class wraps init arguments in PyroParam and we don't want that.
@@ -74,16 +75,13 @@ kernel_prior = gp.kernels.RBF(input_dim=1)
 kernel_prior.lengthscale = pyro.nn.PyroSample(dist.LogNormal(-1.0, 1.0))
 kernel_prior.variance = pyro.nn.PyroSample(dist.LogNormal(0.0, 2.0))
 
-ymin, ((xp, yp), means, vars) = bayesian_optimisation(gp.kernels.RBF, kernel_prior, (x, y), xstar, 10)
+ymin, ((xp, yp), means, vars, thetas) = bayesian_optimisation(gp.kernels.RBF, kernel_prior, (x, y), xstar, 10)
+print(thetas)
 
 print("x*_p", xp)
 print("y*_p", yp)
 print("ymin", ymin)
 
 bayesian_optimisation_plot(f, x, y, xstar, means, vars,
-  xp, yp, [0,5,10],
+  xp, yp, [0,5,10], thetas,
 )
-
-# From anaylising plots from multiple reruns it seems that a single observed
-# value at one of the extremem minimums will cause the variance to include
-# f(x) at both extremes.

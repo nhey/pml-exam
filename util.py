@@ -32,7 +32,7 @@ def gp_plot(f, x, y, xstar, mean, var, filename="gp_plot.pdf"):
   plt.tight_layout()
   plt.savefig(filename)
 
-def bayesian_optimisation_plot(f, x, y, xstar, means, vars, xp, yp, ks, filename="bayesian_optimisation.pdf"):
+def bayesian_optimisation_plot(f, x, y, xstar, means, vars, xp, yp, ks, thetas, filename="bayesian_optimisation.pdf"):
   fig, axs = plt.subplots(len(ks), figsize=(12, 12))
 
   ymin = min(y)
@@ -60,11 +60,12 @@ def bayesian_optimisation_plot(f, x, y, xstar, means, vars, xp, yp, ks, filename
     if xnew is not None:
       assert ynew is not None
       ax.plot(xnew.numpy(), ynew.numpy(), "k*", markersize=16, label="$(x_p^*, f(x_p^*))$")
-      ax.set_title("$k=$" + f"{k}" + ",   $y_{min}=$" + f"{ymin:.2f}")
+      theta = ", ".join([f"{k} = {v:.1e}" for k,v in thetas[k].items()])
+      ax.set_title("$k=$" + f"{k}" + ",   $y_{min}=$" + f"{ymin:.2f}" + ",  " + theta)
       ax.set_ylabel("$y$")
 
   axs[-1].set_xlabel("$x$")
-  axs[0].legend(ncol=5, bbox_to_anchor=(0, 1.1, 1, 0), loc="lower left", mode="expand")
+  axs[-1].legend(ncol=5, bbox_to_anchor=(0, -0.55, 1, 0), loc="lower left", mode="expand")
   plt.tight_layout()
   plt.savefig(filename)
 
