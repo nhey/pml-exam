@@ -25,9 +25,8 @@ def sample_posterior(model, S=1, C=1, W=1000):
   return {k[len("kernel."):]: v[-1] for k, v in mcmc.get_samples().items()}
 
 # Bayesian optimisation
-def bayesian_optimisation(kernel, kernel_priors, D, xstar, T):
+def bayesian_optimisation(kernel, D, xstar, T):
   # kernel:        A function that returns the kernel when given args.
-  # kernel_priors: Kernel instantiated with priors as args.
   # D:             Initial dataset {(x_1, f(x_1)), ..., (x_n, f(x_n))}.
   # xstar:         Candidate set {x^*_1, ..., x^*_l}.
   # T:             Number of iterations.
@@ -75,7 +74,7 @@ kernel_prior = gp.kernels.RBF(input_dim=1)
 kernel_prior.lengthscale = pyro.nn.PyroSample(dist.LogNormal(-1.0, 1.0))
 kernel_prior.variance = pyro.nn.PyroSample(dist.LogNormal(0.0, 2.0))
 
-ymin, ((xp, yp), means, vars, thetas) = bayesian_optimisation(gp.kernels.RBF, kernel_prior, (x, y), xstar, 10)
+ymin, ((xp, yp), means, vars, thetas) = bayesian_optimisation(gp.kernels.RBF, (x, y), xstar, 10)
 print(thetas)
 
 print("x*_p", xp)
