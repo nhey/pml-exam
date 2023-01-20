@@ -36,10 +36,9 @@ posterior_samples = mcmc.get_samples()
 # 2. Check the quality of the MCMC sampling using diagnostics (hint: use Arviz).
 # Use the diagnostics to choose the hyperparameters of the sampling (such as
 # the number of warmup samples).
-# data = arviz.from_pyro(mcmc)
-# summary = arviz.summary(data, hdi_prob=0.95)
-# print(summary)
-# TODO Ran this in Google Colab, since there is an issue in my local environment.
+data = arviz.from_pyro(mcmc)
+summary = arviz.summary(data, hdi_prob=0.95)
+print(summary)
 
 # 3. Use the obtained MCMC samples from the posterior to obtain estimates of
 # mean m(x∗) and variance v(x∗) of p(y∗|x∗,D) at a point x∗ ∈ [−1, 1].
@@ -72,9 +71,6 @@ assert vars.shape[0] == S*C
 
 m = means.mean(0)
 v = vars.mean(0)
-# TODO^ not entirely sure if this is right
-# or if we should do the "predicitons" and then mean (is there
-# even a difference? its a simple mean both ways)
 
 gp_plot(f, x, y, xstar, m, v)
 
