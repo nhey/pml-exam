@@ -17,9 +17,13 @@ y = f(x)
 
 xstar = torch.linspace(-1,1,200).detach()
 
-_S, _W = 1, 200
+import datetime
+t = datetime.datetime.now().strftime('%Y-%m-%d-%H_%M_%S')
+timestamp = True
+t = "-" + str(t) if timestamp else ""
+_S, _W = 501, 500
 
-def sample_posterior(model, T=0, S=_S, C=1, W=_W):
+def sample_posterior(model, k=0, S=_S, C=1, W=_W):
   nuts_kernel = pyro.infer.NUTS(model)
   mcmc=pyro.infer.MCMC(nuts_kernel, num_samples=S, num_chains=C, warmup_steps=W)
   mcmc.run()
@@ -27,7 +31,7 @@ def sample_posterior(model, T=0, S=_S, C=1, W=_W):
   posterior_plot(
     posterior_samples["kernel.lengthscale"],
     posterior_samples["kernel.variance"],
-    filename=f"gp3-prior_posterior{T}.pdf"
+    filename=f"prior{_S+_W}{t}posterior{k}.pdf"
   )
   # Trim "kernel." prefix from variable names and keep only
   # last sample for scalar values.
@@ -61,7 +65,7 @@ def bayesian_optimisation(kernel, D, xstar, T):
       means[k], vars[k] = gpr(xstar, full_cov=False, noiseless=False)
       thetas.append({p[0][:-4]: p[1] for p in kernel_prior.named_pyro_params()})
     # Sample kernel hyperparameters from the posterior.
-    theta = sample_posterior(gpr.model, T=T)
+    theta = sample_posterior(gpr.model, k=k+1)
     gpr.kernel = kernel(**theta)
 
     # Algorithm 1
@@ -91,10 +95,6 @@ print("x*_p", xp)
 print("y*_p", yp)
 print("ymin", ymin)
 
-import datetime
-t = datetime.datetime.now().strftime('%Y-%m-%d-%H_%M_%S')
-timestamp = True
-t = "-" + str(t) if timestamp else ""
 bayesian_optimisation_plot(f, x, y, xstar, means, vars,
   xp, yp, [0,5,10], thetas, filename=f"prior{_S+_W}{t}.pdf"
 )
