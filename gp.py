@@ -42,10 +42,6 @@ print(summary)
 
 # 3. Use the obtained MCMC samples from the posterior to obtain estimates of
 # mean m(x∗) and variance v(x∗) of p(y∗|x∗,D) at a point x∗ ∈ [−1, 1].
-#
-# The predictive distribution given by marginalising out hyperparameters theta:
-#   p(y*|x*,D) = int p(y*|x*,D,theta)p(theta|D) dtheta
-# is intractable. So we use a Monte Carlo estimate.
 xstar = torch.linspace(-1,1,200)
 
 def conditional(xstar, lengthscale, variance):
